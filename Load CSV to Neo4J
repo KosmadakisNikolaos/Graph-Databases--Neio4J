@@ -1,0 +1,45 @@
+LOAD CSV WITH HEADERS FROM
+"file:///EPL_dataset_for_2018_19.csv" as line
+
+
+//Creating a node
+//with label MATCH
+// AND properties
+//round,date,title,ft,ht
+
+MERGE (m:Match{Round:toInteger(line.Round),
+			   Date:(line.Date),
+			   title:line.home+' VS '+line.away,
+			   FT:(line.FT),
+			   HT:(line.HT)
+			})
+			//creating a node
+			//with label TEAM
+			//with a property name
+			//with a value depending on teams name
+			//home team and away team
+			MERGE (hte:Team{name:line.home})
+			MERGE (at:Team{name:line.away})
+			//creating the relationship between
+			//teams and matches
+			//each relationship contains two properties 
+CREATE (hte)-[ph:PLAYED_HOME_IN{FT:toInteger(substring(line.FT,0,1)),HT:toInteger(substring(line.HT,0,1))}]-> (m) <-
+			[pa:PLAYED_AWAY_IN{FT:toInteger(substring(line.FT,2,1)),   HT:toInteger(substring(line.HT,2,1)) }]-(at)
+			//compare scores and set the results for home
+			SET ph.result = CASE ph.FT>pa.FT WHEN true THEN 'WON' ELSE 'LOST' END
+			SET ph.result = CASE ph.FT=pa.FT WHEN true THEN 'DRAW' ELSE ph.result END
+			//compare scores and set the results for away
+			SET pa.result = CASE pa.FT>ph.FT WHEN true THEN 'WON' ELSE 'LOST' END
+			SET pa.result = CASE pa.FT=ph.FT WHEN true THEN 'DRAW' ELSE pa.result END
+			
+			//compare scores for first half and set the results for home
+			SET ph.half_result = CASE ph.HT>pa.HT WHEN true THEN 'WON' ELSE 'LOST' END
+			SET ph.half_result = CASE ph.HT=pa.HT WHEN true THEN 'DRAW' ELSE ph.half_result END
+			//compare scores for first and set the results for away
+			SET pa.half_result = CASE pa.HT>ph.HT WHEN true THEN 'WON' ELSE 'LOST' END
+			SET pa.half_result = CASE pa.HT=ph.HT WHEN true THEN 'DRAW' ELSE pa.half_result END
+			//initial node display setting
+//Neo4J by default displayes only the first 300 nodes. 
+//By executing the command below i am able to view 
+//the number of nodes that i have defined 
+:config initialNodeDisplay: 1000
